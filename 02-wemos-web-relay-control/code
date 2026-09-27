@@ -1,0 +1,111 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+
+// --- WiFi credentials ---
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+// --- Pin definitions ---
+const int LED_PIN = D9;
+const int RELAY_PIN = D5;
+const int BUZZER_PIN = D6;
+
+ESP8266WebServer server(80);
+
+bool ledState = false;
+bool relayState = false;
+
+String htmlPage() {
+  String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>";
+  html += "<title>Wemos D1 Control Panel</title></head><body>";
+  html += "<h2>Wemos D1 - Remote Control</h2>";
+
+  html += "<p>LED: " + String(ledState ? "ON" : "OFF") + "</p>";
+  html += "<a href=\"/led/on\"><button>Turn LED On</button></a> ";
+  html += "<a href=\"/led/off\"><button>Turn LED Off</button></a>";
+
+  html += "<p>Relay: " + String(relayState ? "ON" : "OFF") + "</p>";
+  html += "<a href=\"/relay/on\"><button>Turn Relay On</button></a> ";
+  html += "<a href=\"/relay/off\"><button>Turn Relay Off</button></a>";
+
+  html += "<p><a href=\"/buzzer\"><button>Buzz</button></a></p>";
+
+  html += "</body></html>";
+  return html;
+}
+
+void handleRoot() {
+  server.send(200, "text/html", htmlPage());
+}
+
+void handleLedOn() {
+  ledState = true;
+  digitalWrite(LED_PIN, HIGH);
+  server.sendHeader("Location", "/");
+  server.send(303);
+}
+
+void handleLedOff() {
+  ledState = false;
+  digitalWrite(LED_PIN, LOW);
+  server.sendHeader("Location", "/");
+  server.send(303);
+}
+
+void handleRelayOn() {
+  relayState = true;
+  digitalWrite(RELAY_PIN, HIGH);
+  server.sendHeader("Location", "/");
+  server.send(303);
+}
+
+void handleRelayOff() {
+  relayState = false;
+  digitalWrite(RELAY_PIN, LOW);
+  server.sendHeader("Location", "/");
+  server.send(303);
+}
+
+void handleBuzzer() {
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(300);
+  digitalWrite(BUZZER_PIN, LOW);
+  server.sendHeader("Location", "/");
+  server.send(303);
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  digitalWrite(LED_PIN, LOW);
+  digitalWrite(RELAY_PIN, LOW);
+  digitalWrite(BUZZER_PIN, LOW);
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+  Serial.print("Connected! IP address: ");
+  Serial.println(WiFi.localIP());
+
+  server.on("/", handleRoot);
+  server.on("/led/on", handleLedOn);
+  server.on("/led/off", handleLedOff);
+  server.on("/relay/on", handleRelayOn);
+  server.on("/relay/off", handleRelayOff);
+  server.on("/buzzer", handleBuzzer);
+
+  server.begin();
+  Serial.println("HTTP server started");
+}
+
+void loop() {
+  server.handleClient();
+}
